@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>藥物衛教查詢</title>
+
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    margin: 0;
+    padding: 16px;
+    background: #f5f5f5;
+  }
+  h1 { font-size: 20px; margin-bottom: 12px; }
+
+  .card {
+    background: white;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+
+  input {
+    width: 100%;
+    padding: 14px;
+    font-size: 18px;
+    border-radius: 10px;
+    border: 1px solid #ccc;
+    box-sizing: border-box;
+  }
+
+  .label {
+    font-size: 14px;
+    color: #555;
+    margin-bottom: 6px;
+  }
+
+  .list {
+    max-height: 300px;
+    overflow-y: auto;
+    border-top: 1px solid #eee;
+    margin-top: 8px;
+  }
+
+  .item {
+    padding: 12px 4px;
+    border-bottom: 1px solid #eee;
+    cursor: pointer;
+  }
+
+  .item:hover {
+    background: #f0f0f0;
+  }
+</style>
+</head>
+
+<body>
+
+<h1>藥物衛教查詢</h1>
+
+<div class="card">
+  <div class="label">5 碼代碼（輸入滿 5 碼自動跳）</div>
+  <input id="codeInput" inputmode="numeric" pattern="[0-9]*" placeholder="例如：12345" />
+</div>
+
+<div class="card">
+  <div class="label">藥理分類（可輸入搜尋）</div>
+  <input id="classInput" placeholder="輸入藥理分類關鍵字" />
+</div>
+
+<div class="card">
+  <div class="label">藥物品項 / 商品名（可輸入搜尋）</div>
+  <input id="itemInput" placeholder="輸入藥名、學名、關鍵字" />
+  <div id="resultList" class="list"></div>
+</div>
+
+<script>
+const API_BASE = '<<<貼你的 GAS URL 在這>>>';
+
+const params = new URLSearchParams(location.search);
+const category = params.get('category') || 'inhaler';
+
+let allItems = [];
+
+/* ===== 載入資料 ===== */
+fetch(`${API_BASE}?action=list&category=${category}`)
+  .then(r => r.json())
+  .then(data => {
+    allItems = data;
+    renderList(allItems);
+  });
+
+/* ===== 5 碼自動跳 ===== */
+document.getElementById('codeInput').addEventListener('input', e => {
+  const v = e.target.value;
+  if (v.length === 5) {
+    location.href = `item.html?code=${v}`;
+  }
+});
+
+/* ===== 篩選 ===== */
+function filterItems() {
+  const c = classInput.value.toLowerCase();
+  const q = itemInput.value.toLowerCase();
+
+  const filtered = allItems.filter(it =>
+    (!c || (it.pharm_class || '').toLowerCase().includes(c)) &&
+    (!q || (
+      (it.item_name || '').toLowerCase().includes(q) ||
+      (it.brand_name || '').toLowerCase().includes(q) ||
+      (it.generic_name || '').toLowerCase().includes(q) ||
+      (it.tags || '').toLowerCase().includes(q)
+    ))
+  );
+  renderList(filtered);
+}
+
+classInput.oninput = filterItems;
+itemInput.oninput = filterItems;
+
+/* ===== 顯示清單 ===== */
+function renderList(list) {
+  resultList.innerHTML = '';
+  list.forEach(it => {
+    const div = document.createElement('div');
+    div.className = 'item';
+    div.textContent = `${it.item_name}（${it.brand_name || ''}）`;
+    div.onclick = () => location.href = `item.html?code=${it.code5}`;
+    resultList.appendChild(div);
+  });
+}
+</script>
+
+</body>
+</html>
+
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>藥物資訊</title>
+
+<style>
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  margin: 0;
+  padding: 16px;
+  background: #f5f5f5;
+}
+.card {
+  background: white;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+h2 { margin-top: 0; }
+.video {
+  margin-top: 12px;
+}
+button {
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: none;
+  background: #007aff;
+  color: white;
+  font-size: 16px;
+}
+</style>
+</head>
+
+<body>
+
+<div id="content"></div>
+
+<script>
+const API_BASE = '<<<貼你的 GAS URL 在這>>>';
+
+const code = new URLSearchParams(location.search).get('code');
+
+fetch(`${API_BASE}?action=item&code5=${code}`)
+  .then(r => r.json())
+  .then(d => render(d));
+
+function render(d) {
+  const el = document.getElementById('content');
+  el.innerHTML = `
+    <div class="card">
+      <h2>${d.brand_name}</h2>
+      <div>${d.generic_name}</div>
+      <div>代碼：${d.code5}</div>
+    </div>
+
+    <div class="card">
+      <h3>衛教說明</h3>
+      <div>${(d.counsel_text || '').replace(/\n/g,'<br>')}</div>
+    </div>
+
+    <div class="card">
+      <h3>適應症與劑量</h3>
+      <div>${(d.indication_dose || '').replace(/\n/g,'<br>')}</div>
+    </div>
+  `;
+
+  if (d.video_url) {
+    d.video_url.split(',').forEach(url => {
+      const vid = url.trim().split('v=')[1];
+      const box = document.createElement('div');
+      box.className = 'card video';
+      box.innerHTML = `
+        <button onclick="this.outerHTML='<iframe width=100% height=215 src=https://www.youtube.com/embed/${vid} allowfullscreen></iframe>'">
+          ▶ 播放衛教影片
+        </button>`;
+      el.appendChild(box);
+    });
+  }
+}
+</script>
+
+</body>
+</html>
+
