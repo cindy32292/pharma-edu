@@ -44,7 +44,7 @@ const code = new URLSearchParams(location.search).get('code');
 
 fetch(`${API_BASE}?action=item&code5=${code}`)
   .then(r => r.json())
-  .then(d => render(d));
+  .then(d => { saveRecent_(d); render(d); });
 
 function render(d) {
   const el = document.getElementById('content');
@@ -77,6 +77,27 @@ function render(d) {
         </button>`;
       el.appendChild(box);
     });
+  }
+}
+  function saveRecent_(d) {
+  try {
+    const key = 'pharma_recent_v1';
+    const list = JSON.parse(localStorage.getItem(key) || '[]');
+
+    const item = {
+      code5: String(d.code5 || ''),
+      item_name: d.item_name || '',
+      brand_name: d.brand_name || '',
+      category: d.category || ''
+    };
+
+    // 移除同 code5 舊項目（避免重複）
+    const next = [item, ...list.filter(x => String(x.code5) !== item.code5)]
+      .slice(0, 5); // 最多留 5 筆
+
+    localStorage.setItem(key, JSON.stringify(next));
+  } catch (err) {
+    // localStorage 失敗就忽略（不影響頁面）
   }
 }
 </script>
