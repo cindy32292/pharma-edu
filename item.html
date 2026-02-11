@@ -42,9 +42,13 @@ const API_BASE = '<<<貼你的 GAS URL 在這>>>';
 
 const code = new URLSearchParams(location.search).get('code');
 
-fetch(`${API_BASE}?action=item&code5=${code}`)
+fetch(`${API_BASE}?action=item&code5=${encodeURIComponent(code || '')}`)
   .then(r => r.json())
-  .then(d => { saveRecent_(d); render(d); });
+  .then(d => {
+  saveRecent_(d);
+  console.log('recent_saved', localStorage.getItem('pharma_recent_v1'));
+  render(d);
+ });
 
 function render(d) {
   const el = document.getElementById('content');
@@ -96,6 +100,7 @@ function render(d) {
       .slice(0, 5); // 最多留 5 筆
 
     localStorage.setItem(key, JSON.stringify(next));
+    console.log('saveRecent_ ok', next);
   } catch (err) {
     // localStorage 失敗就忽略（不影響頁面）
   }
