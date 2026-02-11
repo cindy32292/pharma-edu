@@ -6,6 +6,27 @@
 <title>藥物衛教查詢</title>
 
 <style>
+  .tabs{
+  display:flex;
+  gap:10px;
+  margin: 10px 0 16px;
+}
+
+.tab{
+  flex:1;
+  padding: 12px 10px;
+  border-radius: 999px;
+  border: 1px solid #ddd;
+  background: #fff;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.tab.active{
+  border-color: #007aff;
+  font-weight: 600;
+}
+  
   body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     margin: 0;
@@ -59,6 +80,12 @@
 
 <h1>藥物衛教查詢</h1>
 
+<div class="tabs" id="catTabs">
+  <button class="tab" data-cat="pen">筆針</button>
+  <button class="tab" data-cat="inhaler">吸入器</button>
+  <button class="tab" data-cat="other">其他</button>
+</div>
+  
 <div class="card">
   <div class="label">5 碼代碼（輸入滿 5 碼自動跳）</div>
   <input id="codeInput" inputmode="numeric" pattern="[0-9]*" placeholder="例如：12345" />
@@ -95,6 +122,26 @@ fetch(`${API_BASE}?action=list&category=${category}`)
     allItems = data;
     renderList(allItems);
   });
+
+// ===== 分類切換 Tabs =====
+initCategoryTabs_();
+
+function initCategoryTabs_() {
+  const tabs = document.querySelectorAll('#catTabs .tab');
+
+  tabs.forEach(btn => {
+    const cat = btn.dataset.cat;
+
+    // 高亮目前分類
+    if (cat === category) btn.classList.add('active');
+
+    // 點擊切換：保留乾淨網址
+    btn.addEventListener('click', () => {
+      if (cat === category) return;
+      location.href = `?category=${encodeURIComponent(cat)}`;
+    });
+  });
+}
 
 /* ===== 5 碼自動跳 ===== */
 document.getElementById('codeInput').addEventListener('input', e => {
