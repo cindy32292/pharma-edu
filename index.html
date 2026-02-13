@@ -113,29 +113,21 @@ const API_BASE = 'https://script.google.com/macros/s/AKfycbwe_lMyfnS8EmQH56y3xey
 const params = new URLSearchParams(location.search);
 const category = params.get('category') || 'inhaler';
 
-let allItems = [];
+const codeInput = document.getElementById('codeInput');
+const classInput = document.getElementById('classInput');
+const itemInput  = document.getElementById('itemInput');
+const resultList = document.getElementById('resultList');
 
-/* ===== 載入資料 ===== */
-fetch(`${API_BASE}?action=list&category=${category}`)
-  .then(r => r.json())
-  .then(data => {
-    allItems = data;
-    renderList(allItems);
-  });
+let allItems = [];
 
 // ===== 分類切換 Tabs =====
 initCategoryTabs_();
 
 function initCategoryTabs_() {
   const tabs = document.querySelectorAll('#catTabs .tab');
-
   tabs.forEach(btn => {
     const cat = btn.dataset.cat;
-
-    // 高亮目前分類
     if (cat === category) btn.classList.add('active');
-
-    // 點擊切換：保留乾淨網址
     btn.addEventListener('click', () => {
       if (cat === category) return;
       location.href = `?category=${encodeURIComponent(cat)}`;
@@ -143,18 +135,31 @@ function initCategoryTabs_() {
   });
 }
 
-/* ===== 5 碼自動跳 ===== */
-document.getElementById('codeInput').addEventListener('input', e => {
-  const v = e.target.value;
-  if (v.length === 5) {
-    location.href = `item.html?code=${v}`;
-  }
+// ===== 載入資料 =====
+fetch(`${API_BASE}?action=list&category=${encodeURIComponent(category)}`)
+  .then(r => r.json())
+  .then(data => {
+    allItems = data || [];
+    renderList(allItems);
+  })
+  .catch(err => {
+    console.log('list fetch failed', err);
+    resultList.innerHTML = '<div class="item">清單載入失敗：請確認 API_BASE / 權限設定</div>';
+  });
+
+// ===== 5 碼自動跳 =====
+codeInput.addEventListener('input', e => {
+  const v = String(e.target.value || '').trim();
+  if (v.length === 5) location.href = `item.html?code=${encodeURIComponent(v)}`;
 });
 
-/* ===== 篩選 ===== */
+// ===== 篩選 =====
+classInput.addEventListener('input', filterItems);
+itemInput.addEventListener('input', filterItems);
+
 function filterItems() {
-  const c = classInput.value.toLowerCase();
-  const q = itemInput.value.toLowerCase();
+  const c = (classInput.value || '').toLowerCase();
+  const q = (itemInput.value || '').toLowerCase();
 
   const filtered = allItems.filter(it =>
     (!c || (it.pharm_class || '').toLowerCase().includes(c)) &&
@@ -168,53 +173,46 @@ function filterItems() {
   renderList(filtered);
 }
 
-classInput.oninput = filterItems;
-itemInput.oninput = filterItems;
-
-/* ===== 顯示清單 ===== */
+// ===== 顯示清單 =====
 function renderList(list) {
   resultList.innerHTML = '';
-  list.forEach(it => {
+  (list || []).forEach(it => {
     const div = document.createElement('div');
     div.className = 'item';
-    div.textContent = `${it.item_name}（${it.brand_name || ''}）`;
-    div.onclick = () => location.href = `item.html?code=${it.code5}`;
+    div.textContent = `${it.item_name || '(未命名)'}（${it.brand_name || ''}）`;
+    div.onclick = () => location.href = `item.html?code=${encodeURIComponent(it.code5)}`;
     resultList.appendChild(div);
   });
 }
-  renderRecent_();
+
+// ===== 最近使用（只顯示目前分類）=====
+renderRecent_();
 
 function renderRecent_() {
   try {
     const key = 'pharma_recent_v1';
     const list = JSON.parse(localStorage.getItem(key) || '[]');
 
-    if (!list.length) {
-      document.getElementById('recentCard').style.display = 'none';
-      return;
-    }
-
-    document.getElementById('recentCard').style.display = 'block';
-    const box = document.getElementById('recentList');
-    box.innerHTML = '';
-
     const filtered = list.filter(it => !it.category || it.category === category);
 
+    const card = document.getElementById('recentCard');
+    const box  = document.getElementById('recentList');
+
     if (!filtered.length) {
-      document.getElementById('recentCard').style.display = 'none';
+      card.style.display = 'none';
       return;
     }
 
-    document.getElementById('recentCard').style.display = 'block';
-    const box = document.getElementById('recentList');
+    card.style.display = 'block';
     box.innerHTML = '';
+
     filtered.forEach(it => {
       const div = document.createElement('div');
       div.className = 'item';
       const name = it.item_name || '(未命名)';
       const brand = it.brand_name ? `（${it.brand_name}）` : '';
       div.textContent = `${name}${brand}`;
-      div.onclick = () => location.href = `item.html?code=${it.code5}`;
+      div.onclick = () => location.href = `item.html?code=${encodeURIComponent(it.code5)}`;
       box.appendChild(div);
     });
   } catch (err) {
