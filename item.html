@@ -93,7 +93,8 @@ function render(d) {
 
   if (d.video_url) {
     d.video_url.split(',').forEach(url => {
-      const vid = url.trim().split('v=')[1];
+      const vid = extractYouTubeId_(url);
+      if (!vid) return;
       const box = document.createElement('div');
       box.className = 'card video';
       box.innerHTML = `
@@ -104,6 +105,26 @@ function render(d) {
     });
   }
 }
+
+  function extractYouTubeId_(url) {
+  try {
+    const u = new URL(url.trim());
+    // youtu.be/VIDEOID
+    if (u.hostname.includes('youtu.be')) {
+      return u.pathname.replace('/', '');
+    }
+    // youtube.com/watch?v=VIDEOID
+    const v = u.searchParams.get('v');
+    if (v) return v;
+    // youtube.com/embed/VIDEOID
+    const m = u.pathname.match(/\/embed\/([^\/\?]+)/);
+    if (m && m[1]) return m[1];
+    return '';
+  } catch (e) {
+    return '';
+  }
+}
+
   function saveRecent_(d) {
   try {
     const key = 'pharma_recent_v1';
