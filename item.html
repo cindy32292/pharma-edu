@@ -46,7 +46,40 @@ button {
   font-size: 16px;
   cursor: pointer;
 }
-
+  
+details.card { padding: 0; overflow: hidden; }
+details.card > summary{
+  list-style: none;
+  cursor: pointer;
+  padding: 16px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+details.card > summary::-webkit-details-marker { display: none; }
+details.card > summary::after{
+  content: "▾";
+  opacity: .7;
+}
+details.card[open] > summary::after{
+  content: "▴";
+}
+details.card .content{
+  padding: 0 16px 16px;
+  white-space: normal;
+  line-height: 1.6;
+}
+.badgeRow{ display:flex; flex-wrap: wrap; gap:8px; }
+.badge{
+  display:inline-block;
+  padding: 6px 10px;
+  border: 1px solid #ddd;
+  border-radius: 999px;
+  font-size: 13px;
+  background: #fff;
+}
+  
 </style>
 </head>
 
@@ -69,41 +102,68 @@ fetch(`${API_BASE}?action=item&code5=${encodeURIComponent(code || '')}`)
 
 function render(d) {
   const el = document.getElementById('content');
+
+  const safe = (s) => escapeHtml_(String(s || ''));
+  const nl2br = (s) => safe(s).replace(/\n/g, '<br>');
+  const has = (v) => String(v || '').trim().length > 0;
+
+  const tagsHtml = has(d.tags)
+    ? String(d.tags).split(/[,，\n]/).map(t => t.trim()).filter(Boolean)
+        .map(t => `<span class="badge">${safe(t)}</span>`).join('')
+    : '';
+
   el.innerHTML = `
     <div class="topbar">
-    <button onclick="goBack_()">↩️ 返回</button>
-    <button onclick="goHome_()">🏠 回首頁</button>
-  </div>
-  
-    <div class="card">
-      <h2>${d.brand_name}</h2>
-      <div>${d.generic_name}</div>
-      <div>代碼：${d.code5}</div>
+      <button onclick="goBack_()">← 返回</button>
+      <button onclick="goHome_()">🏠 回首頁</button>
     </div>
 
     <div class="card">
-      <h3>衛教說明</h3>
-      <div>${(d.counsel_text || '').replace(/\n/g,'<br>')}</div>
+      <h2>${safe(d.brand_name)}</h2>
+      <div>${safe(d.generic_name)}</div>
+      <div>代碼：${safe(d.code5)}</div>
+      ${has(d.item_name) ? `<div style="margin-top:8px;opacity:.9">${safe(d.item_name)}</div>` : ''}
+      ${tagsHtml ? `<div class="badgeRow" style="margin-top:12px">${tagsHtml}</div>` : ''}
     </div>
 
-    <div class="card">
-      <h3>適應症與劑量</h3>
-      <div>${(d.indication_dose || '').replace(/\n/g,'<br>')}</div>
-    </div>
+    ${section_('衛教說明', d.counsel_text)}
+    ${section_('適應症與劑量', d.indication_dose)}
+    ${section_('注意事項清單', d.safety_checklist)}
+    ${section_('常見問答', d.patient_qa)}
+    ${videoSection_('衛教影片', d.video_url)}
   `;
 
-  if (d.video_url) {
-    d.video_url.split(',').forEach(url => {
+  function section_(title, text){
+    if (!has(text)) return '';
+    return `
+      <details class="card" open>
+        <summary>${safe(title)}</summary>
+        <div class="content">${nl2br(text)}</div>
+      </details>
+    `;
+  }
+
+  function videoSection_(title, urls){
+    if (!has(urls)) return '';
+    const parts = String(urls).split(',').map(s => s.trim()).filter(Boolean);
+    if (!parts.length) return '';
+    const buttons = parts.map((url, i) => {
       const vid = extractYouTubeId_(url);
-      if (!vid) return;
-      const box = document.createElement('div');
-      box.className = 'card video';
-      box.innerHTML = `
-        <button onclick="this.outerHTML='<iframe width=100% height=215 src=https://www.youtube.com/embed/${vid} allowfullscreen></iframe>'">
-          ▶ 播放衛教影片
-        </button>`;
-      el.appendChild(box);
-    });
+      if (!vid) return '';
+      return `
+        <div style="margin-top:${i===0?0:12}px">
+          <button onclick="this.outerHTML='<iframe width=100% height=215 src=https://www.youtube.com/embed/${vid} allowfullscreen></iframe>'">
+            ▶ 播放衛教影片 ${parts.length>1 ? (i+1) : ''}
+          </button>
+        </div>
+      `;
+    }).join('');
+    return `
+      <details class="card">
+        <summary>${safe(title)}</summary>
+        <div class="content">${buttons || '（無可用影片連結）'}</div>
+      </details>
+    `;
   }
 }
 
@@ -158,6 +218,15 @@ function render(d) {
     location.href = 'index.html';
 }
 
+function escapeHtml_(s){
+  return String(s)
+    .replaceAll('&','&amp;')
+    .replaceAll('<','&lt;')
+    .replaceAll('>','&gt;')
+    .replaceAll('"','&quot;')
+    .replaceAll("'","&#39;");
+}
+  
 </script>
 
 </body>
