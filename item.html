@@ -30,6 +30,22 @@ button {
   color: white;
   font-size: 16px;
 }
+
+.topbar{
+  display:flex;
+  gap:10px;
+  margin-bottom: 12px;
+}
+.topbar button{
+  flex:1;
+  padding: 12px 10px;
+  border-radius: 10px;
+  border: 1px solid #ddd;
+  background: white;
+  font-size: 16px;
+  cursor: pointer;
+}
+
 </style>
 </head>
 
@@ -53,6 +69,11 @@ fetch(`${API_BASE}?action=item&code5=${encodeURIComponent(code || '')}`)
 function render(d) {
   const el = document.getElementById('content');
   el.innerHTML = `
+    <div class="topbar">
+    <button onclick="goBack_()">← 返回</button>
+    <button onclick="goHome_()">🏠 回首頁</button>
+  </div>
+  
     <div class="card">
       <h2>${d.brand_name}</h2>
       <div>${d.generic_name}</div>
@@ -105,6 +126,16 @@ function render(d) {
     // localStorage 失敗就忽略（不影響頁面）
   }
 }
+
+  function goBack_(){
+  if (history.length > 1) history.back();
+  else location.href = 'index.html';
+}
+
+  function goHome_(){
+    location.href = 'index.html';
+}
+
 </script>
 
 </body>
