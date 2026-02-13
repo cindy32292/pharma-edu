@@ -198,7 +198,17 @@ function renderRecent_() {
     const box = document.getElementById('recentList');
     box.innerHTML = '';
 
-    list.forEach(it => {
+    const filtered = list.filter(it => !it.category || it.category === category);
+
+    if (!filtered.length) {
+      document.getElementById('recentCard').style.display = 'none';
+      return;
+    }
+
+    document.getElementById('recentCard').style.display = 'block';
+    const box = document.getElementById('recentList');
+    box.innerHTML = '';
+    filtered.forEach(it => {
       const div = document.createElement('div');
       div.className = 'item';
       const name = it.item_name || '(未命名)';
